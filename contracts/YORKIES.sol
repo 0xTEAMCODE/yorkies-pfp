@@ -13,6 +13,7 @@ contract YORKIES is ERC721, ERC721Enumerable, Ownable {
     using SafeMath for uint256;
     Counters.Counter internal _tokenIds;
 
+    string internal revealCID;
     string internal baseCID; // CID of the base URI I.E//QmP5NXDTvFmFQiU91xDdt56yfSPybCUb22mX3Zkvg3nJDT
     // Files In IPFS Folder need to be name 1.json, 2.json, 3.json, etc.
 
@@ -20,7 +21,8 @@ contract YORKIES is ERC721, ERC721Enumerable, Ownable {
 
     bool public premint_paused = true; //Preminting Status
 
-    uint256 public constant _price = 50000000000000000; //Price in wei 0.06 ETH
+    uint256 public _price; //Price in wei
+    uint256 public _discount_price; //Discounted Price in wei
 
     uint256 public _reserved; //Reserved Tokens for giveaway
 
@@ -38,11 +40,17 @@ contract YORKIES is ERC721, ERC721Enumerable, Ownable {
         string memory symbol,
         uint16 supply,
         uint256 reserved,
-        string memory uri
+        string memory uri,
+        address[] memory _whiteList,
+        uint256 price,
+        uint256 discount_price
+
     ) ERC721(name, symbol) {
         mintingSupply = supply;
         _reserved = reserved;
-        baseCID = uri;
+        revealCID = uri;
+        whitelistBatch_Admin(_whiteList);
+        _price = price;
     }
 
     //Get Total Supply of Tokens // --<
@@ -63,15 +71,17 @@ contract YORKIES is ERC721, ERC721Enumerable, Ownable {
         );
 
         return
-            string(
-                abi.encodePacked(
-                    "ipfs://",
-                    baseCID,
-                    "/",
-                    Utility.toString(tokenId),
-                    ".json"
+            bytes(baseCID).length > 0
+                ? string(
+                    abi.encodePacked(
+                        "ipfs://",
+                        baseCID,
+                        "/",
+                        tokenId,
+                        ".json"
+                    )
                 )
-            );
+                : revealCID;
     }
 
     // --<
@@ -129,16 +139,16 @@ contract YORKIES is ERC721, ERC721Enumerable, Ownable {
     }
 
     //GET PRICE // --<
-    function getDiscountPrice(uint256 amount) public pure returns (uint256) {
+    function getDiscountPrice(uint256 amount) public view returns (uint256) {
         if (amount >= 10) {
-            return 40000000000000000;
+            return _discount_price;
         } else {
             return _price;
         }
     }
 
     // --<
-    function getPrice() public pure returns (uint256) {
+    function getPrice() public view returns (uint256) {
         return _price;
     }
 
@@ -169,7 +179,7 @@ contract YORKIES is ERC721, ERC721Enumerable, Ownable {
     }
 
     // SETS WHITELIST // TESTED
-    function whitelistBatch_Admin(address[] calldata _to) public onlyOwner {
+    function whitelistBatch_Admin(address[] memory _to) public onlyOwner {
         for (uint256 i = 0; i < _to.length; i++) {
             whitelisted[_to[i]] = true;
         }
